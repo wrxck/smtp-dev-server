@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run tests
+        run: go test ./... -v
+
+      - name: Build binaries
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+
+          GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-darwin-amd64 ./cmd/smtp-dev-server/
+          GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-darwin-arm64 ./cmd/smtp-dev-server/
+
+          cd dist
+          tar czf smtp-dev-server-${VERSION}-darwin-amd64.tar.gz smtp-dev-server-darwin-amd64
+          tar czf smtp-dev-server-${VERSION}-darwin-arm64.tar.gz smtp-dev-server-darwin-arm64
+
+          shasum -a 256 *.tar.gz > checksums.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt

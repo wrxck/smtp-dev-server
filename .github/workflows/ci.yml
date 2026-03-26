@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run tests
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic -v
+
+      - name: Check coverage
+        run: |
+          go tool cover -func=coverage.out
+          # Extract total coverage percentage (excluding cmd/ main package)
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    runs-on: macos-latest
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${GITHUB_REF_NAME:-dev}
+          go build -ldflags "-s -w -X main.version=${VERSION}" -o smtp-dev-server-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/smtp-dev-server/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smtp-dev-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: smtp-dev-server-${{ matrix.goos }}-${{ matrix.goarch }}
