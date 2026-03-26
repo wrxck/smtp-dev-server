@@ -1,0 +1,4 @@
+smtp-dev-server
+dist/
+*.tar.gz
+.DS_Store
