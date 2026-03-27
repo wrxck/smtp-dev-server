@@ -4,11 +4,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/wrxck/smtp-dev-server)](https://goreportcard.com/report/github.com/wrxck/smtp-dev-server)
 [![GitHub release](https://img.shields.io/github/v/release/wrxck/smtp-dev-server)](https://github.com/wrxck/smtp-dev-server/releases)
 [![License](https://img.shields.io/github/license/wrxck/smtp-dev-server)](LICENSE.md)
-[![Platform](https://img.shields.io/badge/platform-macOS-blue)](https://github.com/wrxck/smtp-dev-server)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/wrxck/smtp-dev-server)
 
-**A fake SMTP server for macOS development and testing.** Catches all outgoing emails and displays them in a slick dark-mode web UI — no runtime dependencies, single binary.
+**A fake SMTP server for development and testing.** Catches all outgoing emails and displays them in a slick dark-mode web UI — no runtime dependencies, single binary.
 
-Inspired by [smtp4dev](https://github.com/rnwood/smtp4dev), rewritten from scratch in Go for macOS.
+Inspired by [smtp4dev](https://github.com/rnwood/smtp4dev), rewritten from scratch in Go for macOS and Linux.
 
 ---
 
@@ -22,7 +22,7 @@ When building apps that send email (signup flows, password resets, notifications
 
 ## Install
 
-### Homebrew (recommended)
+### Homebrew (macOS & Linux)
 
 ```bash
 brew tap wrxck/tap
@@ -31,15 +31,20 @@ brew install smtp-dev-server
 
 ### Download binary
 
-Grab the latest release for your Mac from [GitHub Releases](https://github.com/wrxck/smtp-dev-server/releases):
+Grab the latest release from [GitHub Releases](https://github.com/wrxck/smtp-dev-server/releases):
 
-- **Apple Silicon (M1/M2/M3/M4):** `smtp-dev-server-*-darwin-arm64.tar.gz`
-- **Intel:** `smtp-dev-server-*-darwin-amd64.tar.gz`
+**macOS:**
+- Apple Silicon (M1/M2/M3/M4): `smtp-dev-server-*-darwin-arm64.tar.gz`
+- Intel: `smtp-dev-server-*-darwin-amd64.tar.gz`
+
+**Linux:**
+- x86_64: `smtp-dev-server-*-linux-amd64.tar.gz`
+- ARM64: `smtp-dev-server-*-linux-arm64.tar.gz`
 
 ```bash
 tar xzf smtp-dev-server-*.tar.gz
-chmod +x smtp-dev-server-darwin-*
-sudo mv smtp-dev-server-darwin-* /usr/local/bin/smtp-dev-server
+chmod +x smtp-dev-server-*
+sudo mv smtp-dev-server-* /usr/local/bin/smtp-dev-server
 ```
 
 ### Build from source
@@ -58,8 +63,8 @@ smtp-dev-server
 
 ```
 ┌────────────.
-|\          / \    smtp-dev-server v1.0.0
-| \        /   \   A fake SMTP server for macOS
+|\          / \    smtp-dev-server v1.1.0
+| \        /   \   A fake SMTP server for development
 |  smtp-dev     /  Web UI: http://127.0.0.1:5050
 |             /
 └────────────'
@@ -123,6 +128,7 @@ Options:
   -smtp string        SMTP server listen address (default "127.0.0.1:2525")
   -http string        Web UI / API listen address (default "127.0.0.1:5050")
   -max-messages int   Maximum number of messages to retain (default 500)
+  -update             Check for updates and install if available
   -version            Show version and exit
 ```
 
@@ -137,7 +143,33 @@ smtp-dev-server -max-messages 2000
 
 # Bind to all interfaces (accessible from other machines/containers)
 smtp-dev-server -smtp 0.0.0.0:2525 -http 0.0.0.0:5050
+
+# Check for updates
+smtp-dev-server --update
 ```
+
+---
+
+## Self-Update
+
+smtp-dev-server checks for updates automatically on startup and will notify you if a new version is available:
+
+```
+  Update available: v1.0.0 -> v1.1.0
+  Run with --update to install, or download from:
+  https://github.com/wrxck/smtp-dev-server/releases/tag/v1.1.0
+```
+
+To install the update:
+
+```bash
+smtp-dev-server --update
+# smtp-dev-server v1.0.0 — checking for updates...
+# Update available: v1.0.0 -> v1.1.0 (smtp-dev-server-v1.1.0-darwin-arm64.tar.gz, 2.3 MB)
+# Press 'u' to install update, or any other key to cancel:
+```
+
+Press `u` to download and install the update in-place.
 
 ---
 
@@ -211,9 +243,9 @@ curl -X DELETE http://localhost:5050/api/messages
 └─────────────┘                        │  │ In-memory  │  │
                                        │  │ store      │  │
 ┌─────────────┐    GET /api/messages   │  └────────────┘  │
-│  Browser    │ ◄───────────────────── │                  │
+│  Browser    │ <───────────────────── │                  │
 │  (Web UI)   │    SSE /api/events     │                  │
-└─────────────┘ ◄───────────────────── └──────────────────┘
+└─────────────┘ <───────────────────── └──────────────────┘
 ```
 
 smtp-dev-server is a single Go binary with three components:

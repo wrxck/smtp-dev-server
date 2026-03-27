@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -28,12 +28,16 @@ jobs:
 
           GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-darwin-amd64 ./cmd/smtp-dev-server/
           GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-darwin-arm64 ./cmd/smtp-dev-server/
+          GOOS=linux GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-linux-amd64 ./cmd/smtp-dev-server/
+          GOOS=linux GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/smtp-dev-server-linux-arm64 ./cmd/smtp-dev-server/
 
           cd dist
           tar czf smtp-dev-server-${VERSION}-darwin-amd64.tar.gz smtp-dev-server-darwin-amd64
           tar czf smtp-dev-server-${VERSION}-darwin-arm64.tar.gz smtp-dev-server-darwin-arm64
+          tar czf smtp-dev-server-${VERSION}-linux-amd64.tar.gz smtp-dev-server-linux-amd64
+          tar czf smtp-dev-server-${VERSION}-linux-arm64.tar.gz smtp-dev-server-linux-arm64
 
-          shasum -a 256 *.tar.gz > checksums.txt
+          sha256sum *.tar.gz > checksums.txt
 
       - name: Create release
         uses: softprops/action-gh-release@v2

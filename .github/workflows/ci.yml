@@ -8,7 +8,10 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,11 +25,11 @@ jobs:
       - name: Check coverage
         run: |
           go tool cover -func=coverage.out
-          # Extract total coverage percentage (excluding cmd/ main package)
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
 
       - name: Upload coverage
+        if: matrix.os == 'macos-latest'
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.out
@@ -34,7 +37,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: test
     strategy:
       matrix:
@@ -42,6 +45,10 @@ jobs:
           - goos: darwin
             goarch: amd64
           - goos: darwin
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
             goarch: arm64
     steps:
       - uses: actions/checkout@v4
