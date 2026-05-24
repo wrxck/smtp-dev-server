@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,6 +60,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/messages/{id}/read", s.handleMarkRead)
 	s.mux.HandleFunc("GET /api/sessions", s.handleGetSessions)
 	s.mux.HandleFunc("GET /api/sessions/{id}", s.handleGetSession)
+	s.mux.HandleFunc("GET /api/mailboxes", s.handleGetMailboxes)
+	s.mux.HandleFunc("GET /api/mailboxes/{address}/messages", s.handleGetMailboxMessages)
 	s.mux.HandleFunc("GET /api/events", s.handleSSE)
 }
 
@@ -91,7 +94,30 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	// optional ?to= filter shows messages addressed to a single recipient.
+	// case-insensitive; matches any address in the to list.
+	if to := strings.TrimSpace(r.URL.Query().Get("to")); to != "" {
+		writeJSON(w, s.store.MessagesForMailbox(to))
+		return
+	}
 	writeJSON(w, s.store.GetMessages())
+}
+
+// handleGetMailboxes returns the list of distinct recipient addresses
+// (lowercased) with per-mailbox message and unread counts.
+func (s *Server) handleGetMailboxes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, s.store.Mailboxes())
+}
+
+// handleGetMailboxMessages returns the messages addressed to a single
+// recipient. address must be in the path and is treated as opaque.
+func (s *Server) handleGetMailboxMessages(w http.ResponseWriter, r *http.Request) {
+	addr := r.PathValue("address")
+	if addr == "" {
+		http.Error(w, "address required", http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, s.store.MessagesForMailbox(addr))
 }
 
 func (s *Server) handleGetMessage(w http.ResponseWriter, r *http.Request) {
