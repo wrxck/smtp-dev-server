@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/wrxck/smtp-dev-server/internal/mcp"
 	"github.com/wrxck/smtp-dev-server/internal/smtp"
 	"github.com/wrxck/smtp-dev-server/internal/store"
 	"github.com/wrxck/smtp-dev-server/internal/updater"
@@ -27,6 +29,19 @@ const banner = `
 `
 
 func main() {
+	// stdio mcp subcommand: read json-rpc from stdin, proxy to a running
+	// smtp-dev-server's http api. unlocks llm-client inspection.
+	if len(os.Args) >= 2 && os.Args[1] == "mcp" {
+		mcpFlags := flag.NewFlagSet("mcp", flag.ExitOnError)
+		upstream := mcpFlags.String("upstream", "http://127.0.0.1:5050", "URL of the running smtp-dev-server")
+		_ = mcpFlags.Parse(os.Args[2:])
+		if err := mcp.Run(context.Background(), os.Stdin, os.Stdout, *upstream); err != nil {
+			fmt.Fprintln(os.Stderr, "mcp:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	smtpAddr := flag.String("smtp", "127.0.0.1:2525", "SMTP server listen address")
 	httpAddr := flag.String("http", "127.0.0.1:5050", "Web UI / API listen address")
 	maxMessages := flag.Int("max-messages", 500, "Maximum number of messages to keep")

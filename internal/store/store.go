@@ -1,6 +1,8 @@
 package store
 
 import (
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -173,4 +175,69 @@ func (s *Store) UnreadCount() int {
 		}
 	}
 	return count
+}
+
+// mailboxSummary describes one recipient address that has received at
+// least one message. addresses are normalised to lowercase so casing
+// differences collapse to a single mailbox.
+type MailboxSummary struct {
+	Address      string    `json:"address"`
+	MessageCount int       `json:"messageCount"`
+	UnreadCount  int       `json:"unreadCount"`
+	LastReceived time.Time `json:"lastReceived"`
+}
+
+// mailboxes returns every distinct recipient address (lowercased) that
+// has received at least one message, with per-mailbox counts. messages
+// addressed to multiple recipients contribute to each recipient's
+// mailbox.
+func (s *Store) Mailboxes() []MailboxSummary {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	byAddr := make(map[string]*MailboxSummary)
+	for _, m := range s.messages {
+		for _, addr := range m.To {
+			key := strings.ToLower(strings.TrimSpace(addr))
+			if key == "" {
+				continue
+			}
+			mb, ok := byAddr[key]
+			if !ok {
+				mb = &MailboxSummary{Address: key}
+				byAddr[key] = mb
+			}
+			mb.MessageCount++
+			if !m.IsRead {
+				mb.UnreadCount++
+			}
+			if m.ReceivedAt.After(mb.LastReceived) {
+				mb.LastReceived = m.ReceivedAt
+			}
+		}
+	}
+	out := make([]MailboxSummary, 0, len(byAddr))
+	for _, mb := range byAddr {
+		out = append(out, *mb)
+	}
+	// newest-active mailbox first
+	sort.Slice(out, func(i, j int) bool { return out[i].LastReceived.After(out[j].LastReceived) })
+	return out
+}
+
+// messagesForMailbox returns messages addressed (in the to list) to the
+// given recipient. address comparison is case-insensitive.
+func (s *Store) MessagesForMailbox(address string) []*Message {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	needle := strings.ToLower(strings.TrimSpace(address))
+	out := make([]*Message, 0)
+	for _, m := range s.messages {
+		for _, a := range m.To {
+			if strings.EqualFold(strings.TrimSpace(a), needle) {
+				out = append(out, m)
+				break
+			}
+		}
+	}
+	return out
 }
